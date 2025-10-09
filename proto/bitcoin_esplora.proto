@@ -1,0 +1,100 @@
+syntax = "proto3";
+
+package bitcoin_esplora.v1;
+
+// Enhanced block information in Esplora API format
+message BlockEsplora {
+  string id = 1;                    // block hash
+  uint32 height = 2;                // block height
+  uint32 version = 3;               // block version
+  uint64 timestamp = 4;             // block timestamp
+  uint32 bits = 5;                  // block bits
+  uint32 nonce = 6;                 // block nonce
+  uint32 tx_count = 7;              // number of transactions
+  uint64 size = 8;                  // block size in bytes
+  uint64 weight = 9;                // block weight
+  string merkle_root = 10;          // merkle root
+  string previous_hash = 11;        // previous block hash
+  double difficulty = 12;           // block difficulty
+  string mediantime = 13;           // median time
+}
+
+// Enhanced transaction data in Esplora API format
+message TransactionsEsplora {
+  repeated TransactionEsplora transactions = 1;
+}
+
+message TransactionEsplora {
+  string txid = 1;                  // transaction ID
+  uint32 version = 2;               // transaction version
+  uint32 locktime = 3;              // locktime
+  uint64 size = 4;                  // transaction size
+  uint64 weight = 5;                // transaction weight
+  uint64 fee = 6;                   // fee in satoshis
+  repeated TxInputEsplora inputs = 7;      // transaction inputs
+  repeated TxOutputEsplora outputs = 8;    // transaction outputs
+  optional TxStatusEsplora status = 9;       // transaction status
+  repeated string witness = 10;     // witness data
+}
+
+message TxInputEsplora {
+  string txid = 1;                  // previous transaction ID
+  uint32 vout = 2;                  // output index
+  bool is_coinbase = 3;             // is coinbase input
+  string scriptsig = 4;             // script signature
+  string scriptsig_asm = 5;         // script signature asm
+  repeated string witness = 6;      // witness data
+  uint32 sequence = 7;              // sequence number
+  optional TxOutputEsplora prevout = 8;      // previous output
+}
+
+message TxOutputEsplora {
+  string scriptpubkey = 1;          // script pubkey
+  string scriptpubkey_asm = 2;      // script pubkey asm
+  string scriptpubkey_type = 3;     // script pubkey type
+  string scriptpubkey_address = 4;  // script pubkey address
+  uint64 value = 5;                 // value in satoshis
+}
+
+message TxStatusEsplora {
+  bool confirmed = 1;               // is confirmed
+  uint32 block_height = 2;          // block height (if confirmed)
+  string block_hash = 3;            // block hash (if confirmed)
+  uint64 block_time = 4;            // block time (if confirmed)
+}
+
+// Address analysis and UTXO tracking
+message AddressesEsplora {
+  repeated AddressInfoEsplora addresses = 1;
+}
+
+message AddressInfoEsplora {
+  string address = 1;               // address
+  string address_type = 2;          // address type
+  uint64 funded_txo_count = 3;      // funded txo count
+  uint64 funded_txo_sum = 4;        // funded txo sum in satoshis
+  uint64 spent_txo_count = 5;       // spent txo count
+  uint64 spent_txo_sum = 6;         // spent txo sum in satoshis
+  repeated UtxoInfoEsplora utxos = 7;     // UTXOs
+}
+
+message UtxoInfoEsplora {
+  string txid = 1;                  // transaction ID
+  uint32 vout = 2;                  // output index
+  uint64 value = 3;                 // value in satoshis
+  optional TxStatusEsplora status = 4;       // status
+}
+
+// Network statistics and fee estimates
+message NetworkStats {
+  uint32 block_height = 1;          // block height
+  string block_hash = 2;            // block hash
+  map<string, double> fee_estimates = 3;  // fee estimates
+  uint32 mempool_count = 4;         // mempool count
+  uint64 mempool_vsize = 5;         // mempool vsize
+  uint64 mempool_total_fee = 6;     // mempool total fee
+  uint64 total_tx_count = 7;        // total tx count
+  uint64 total_fees = 8;            // total fees
+  uint32 active_addresses = 9;      // active addresses
+  double avg_fee_rate = 10;         // average fee rate
+}

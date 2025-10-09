@@ -1,64 +1,40 @@
 syntax = "proto3";
 
-package esplora.v1;
+package esplora_complete.v1;
 
-// Complete Bitcoin data structure mimicking ALL Esplora API endpoints
+// Main output structure that contains all Esplora API data
 message EsploraCompleteData {
-  // Block information (GET /block/:hash)
-  optional BlockInfo block = 1;
-  
-  // Block summaries (GET /blocks)
+  // Block information
+  BlockInfo block = 1;
   repeated BlockSummary block_summaries = 2;
-  
-  // Block transactions (GET /block/:hash/txs)
   repeated TransactionInfo block_transactions = 3;
   
-  // Transaction information (GET /tx/:txid)
+  // Transaction data
   repeated TransactionInfo transactions = 4;
-  
-  // Transaction hex (GET /tx/:txid/hex)
   repeated TransactionHex transaction_hexes = 5;
-  
-  // Transaction status (GET /tx/:txid/status)
   repeated TransactionStatus transaction_statuses = 6;
   
-  // Address information (GET /address/:address)
+  // Address data
   repeated AddressInfo addresses = 7;
-  
-  // Address transactions (GET /address/:address/txs)
   repeated AddressTransaction address_transactions = 8;
-  
-  // Address UTXOs (GET /address/:address/utxo)
   repeated AddressUtxo address_utxos = 9;
   
-  // Mempool information (GET /mempool)
-  optional MempoolInfo mempool = 10;
-  
-  // Mempool recent (GET /mempool/recent)
+  // Mempool data
+  MempoolInfo mempool = 10;
   repeated MempoolTransaction mempool_recent = 11;
-  
-  // Mempool txids (GET /mempool/txids)
   repeated string mempool_txids = 12;
   
-  // Network tip height (GET /blocks/tip/height)
-  optional NetworkTip network_tip = 13;
-  
-  // Fee estimates (GET /fee-estimates)
+  // Network data
+  NetworkTip network_tip = 13;
   repeated FeeEstimate fee_estimates = 14;
+  NetworkStats network_stats = 15;
   
-  // Network statistics (GET /stats)
-  optional NetworkStats network_stats = 15;
-  
-  // Search results (GET /search/:query)
+  // Search and webhooks
   repeated SearchResult search_results = 16;
-  
-  // Webhook events for real-time notifications
   repeated WebhookEvent webhook_events = 17;
   
-  // Asset information for Liquid/Elements
+  // Liquid/Elements data
   repeated AssetInfo assets = 18;
-  
-  // Liquid/Elements specific endpoints
   repeated LiquidAsset liquid_assets = 19;
   repeated PegIn peg_ins = 20;
   repeated PegOut peg_outs = 21;
@@ -67,234 +43,234 @@ message EsploraCompleteData {
 // Block information (GET /block/:hash)
 message BlockInfo {
   string id = 1;                    // block hash
-  uint32 height = 2;
-  uint32 version = 3;
-  uint64 timestamp = 4;
-  uint32 bits = 5;
-  uint32 nonce = 6;
-  uint32 tx_count = 7;
-  uint64 size = 8;
-  uint64 weight = 9;
-  string merkle_root = 10;
-  string previous_hash = 11;
-  double difficulty = 12;
-  string mediantime = 13;
+  uint32 height = 2;                // block height
+  uint32 version = 3;               // block version
+  uint64 timestamp = 4;             // block timestamp
+  uint32 bits = 5;                  // block bits
+  uint32 nonce = 6;                 // block nonce
+  uint32 tx_count = 7;              // number of transactions
+  uint64 size = 8;                  // block size in bytes
+  uint64 weight = 9;                // block weight
+  string merkle_root = 10;          // merkle root
+  string previous_hash = 11;        // previous block hash
+  double difficulty = 12;           // block difficulty
+  string mediantime = 13;           // median time
 }
 
 // Block summary (GET /blocks)
 message BlockSummary {
-  string id = 1;
-  uint32 height = 2;
-  uint64 timestamp = 3;
-  uint32 tx_count = 4;
-  uint64 size = 5;
-  uint64 weight = 6;
+  string id = 1;                    // block hash
+  uint32 height = 2;                // block height
+  uint64 timestamp = 3;             // block timestamp
+  uint32 tx_count = 4;              // number of transactions
+  uint64 size = 5;                  // block size
+  uint64 weight = 6;                // block weight
 }
 
 // Transaction information (GET /tx/:txid)
 message TransactionInfo {
-  string txid = 1;
-  uint32 version = 2;
-  uint32 locktime = 3;
-  uint64 size = 4;
-  uint64 weight = 5;
-  uint64 fee = 6;
-  repeated TxInput inputs = 7;
-  repeated TxOutput outputs = 8;
-  optional TxStatus status = 9;
-  repeated string witness = 10;
+  string txid = 1;                  // transaction ID
+  uint32 version = 2;               // transaction version
+  uint32 locktime = 3;              // locktime
+  uint64 size = 4;                  // transaction size
+  uint64 weight = 5;                // transaction weight
+  uint64 fee = 6;                   // fee in satoshis
+  repeated TxInput inputs = 7;      // transaction inputs
+  repeated TxOutput outputs = 8;    // transaction outputs
+  TxStatus status = 9;              // transaction status
+  repeated string witness = 10;     // witness data
 }
 
 // Transaction input
 message TxInput {
-  string txid = 1;
-  uint32 vout = 2;
-  bool is_coinbase = 3;
-  string scriptsig = 4;
-  string scriptsig_asm = 5;
-  repeated string witness = 6;
-  uint32 sequence = 7;
-  optional TxOutput prevout = 8; // Previous output
+  string txid = 1;                  // previous transaction ID
+  uint32 vout = 2;                  // output index
+  bool is_coinbase = 3;             // is coinbase input
+  string scriptsig = 4;             // script signature
+  string scriptsig_asm = 5;         // script signature asm
+  repeated string witness = 6;      // witness data
+  uint32 sequence = 7;              // sequence number
+  TxOutput prevout = 8;             // previous output
 }
 
 // Transaction output
 message TxOutput {
-  string scriptpubkey = 1;
-  string scriptpubkey_asm = 2;
-  string scriptpubkey_type = 3;
-  string scriptpubkey_address = 4;
-  uint64 value = 5;
+  string scriptpubkey = 1;          // script pubkey
+  string scriptpubkey_asm = 2;      // script pubkey asm
+  string scriptpubkey_type = 3;     // script pubkey type
+  string scriptpubkey_address = 4;  // script pubkey address
+  uint64 value = 5;                 // value in satoshis
 }
 
 // Transaction status
 message TxStatus {
-  bool confirmed = 1;
-  optional uint32 block_height = 2;
-  optional string block_hash = 3;
-  optional uint64 block_time = 4;
+  bool confirmed = 1;               // is confirmed
+  uint32 block_height = 2;          // block height (if confirmed)
+  string block_hash = 3;            // block hash (if confirmed)
+  uint64 block_time = 4;            // block time (if confirmed)
 }
 
-// Transaction hex (GET /tx/:txid/hex)
+// Transaction hex
 message TransactionHex {
-  string txid = 1;
-  string hex = 2;
+  string txid = 1;                  // transaction ID
+  string hex = 2;                   // raw transaction hex
 }
 
-// Transaction status (GET /tx/:txid/status)
+// Transaction status
 message TransactionStatus {
-  string txid = 1;
-  bool confirmed = 2;
-  optional uint32 block_height = 3;
-  optional string block_hash = 4;
-  optional uint64 block_time = 5;
+  string txid = 1;                  // transaction ID
+  bool confirmed = 2;               // is confirmed
+  uint32 block_height = 3;          // block height (if confirmed)
+  string block_hash = 4;            // block hash (if confirmed)
+  uint64 block_time = 5;            // block time (if confirmed)
 }
 
 // Address information (GET /address/:address)
 message AddressInfo {
-  string address = 1;
-  string address_type = 2;
-  uint64 funded_txo_count = 3;
-  uint64 funded_txo_sum = 4;
-  uint64 spent_txo_count = 5;
-  uint64 spent_txo_sum = 6;
-  uint64 mempool_tx_count = 7;
-  uint64 mempool_funded_txo_count = 8;
-  uint64 mempool_funded_txo_sum = 9;
-  uint64 mempool_spent_txo_count = 10;
-  uint64 mempool_spent_txo_sum = 11;
-  repeated UtxoInfo utxos = 12;
+  string address = 1;               // address
+  string address_type = 2;          // address type
+  uint64 funded_txo_count = 3;      // funded txo count
+  uint64 funded_txo_sum = 4;        // funded txo sum in satoshis
+  uint64 spent_txo_count = 5;       // spent txo count
+  uint64 spent_txo_sum = 6;         // spent txo sum in satoshis
+  uint64 mempool_tx_count = 7;      // mempool tx count
+  uint64 mempool_funded_txo_count = 8;  // mempool funded txo count
+  uint64 mempool_funded_txo_sum = 9;    // mempool funded txo sum
+  uint64 mempool_spent_txo_count = 10;  // mempool spent txo count
+  uint64 mempool_spent_txo_sum = 11;    // mempool spent txo sum
+  repeated UtxoInfo utxos = 12;     // UTXOs
 }
 
 // UTXO information
 message UtxoInfo {
-  string txid = 1;
-  uint32 vout = 2;
-  uint64 value = 3;
-  optional TxStatus status = 4;
+  string txid = 1;                  // transaction ID
+  uint32 vout = 2;                  // output index
+  uint64 value = 3;                 // value in satoshis
+  TxStatus status = 4;              // status
 }
 
-// Address transaction (GET /address/:address/txs)
+// Address transaction
 message AddressTransaction {
-  string address = 1;
-  string txid = 2;
-  uint64 value = 3;
-  uint64 fee = 4;
-  uint64 block_height = 5;
-  uint64 block_time = 6;
+  string address = 1;               // address
+  string txid = 2;                  // transaction ID
+  uint64 value = 3;                 // value in satoshis
+  uint64 fee = 4;                   // fee in satoshis
+  uint64 block_height = 5;          // block height
+  uint64 block_time = 6;            // block time
 }
 
-// Address UTXO (GET /address/:address/utxo)
+// Address UTXO
 message AddressUtxo {
-  string address = 1;
-  string txid = 2;
-  uint32 vout = 3;
-  uint64 value = 4;
-  uint64 block_height = 5;
-  uint64 block_time = 6;
+  string address = 1;               // address
+  string txid = 2;                  // transaction ID
+  uint32 vout = 3;                  // output index
+  uint64 value = 4;                 // value in satoshis
+  uint64 block_height = 5;          // block height
+  uint64 block_time = 6;            // block time
 }
 
 // Mempool information (GET /mempool)
 message MempoolInfo {
-  uint32 count = 1;
-  uint64 vsize = 2;
-  uint64 total_fee = 3;
-  repeated FeeHistogramEntry fee_histogram = 4;
+  uint32 count = 1;                 // transaction count
+  uint64 vsize = 2;                 // total vsize
+  uint64 total_fee = 3;             // total fee in satoshis
+  repeated FeeHistogramEntry fee_histogram = 4;  // fee histogram
 }
 
 // Fee histogram entry
 message FeeHistogramEntry {
-  double feerate = 1;
-  uint64 vsize = 2;
+  double feerate = 1;               // fee rate
+  uint64 vsize = 2;                 // vsize
 }
 
-// Mempool transaction (GET /mempool/recent)
+// Mempool transaction
 message MempoolTransaction {
-  string txid = 1;
-  uint64 fee = 2;
-  uint64 vsize = 3;
-  uint64 value = 4;
-  uint64 time = 5;
+  string txid = 1;                  // transaction ID
+  uint64 fee = 2;                   // fee in satoshis
+  uint64 vsize = 3;                 // vsize
+  uint64 value = 4;                 // value in satoshis
+  uint64 time = 5;                  // time
 }
 
 // Network tip (GET /blocks/tip/height)
 message NetworkTip {
-  uint32 height = 1;
-  string hash = 2;
-  uint64 timestamp = 3;
+  uint32 height = 1;                // block height
+  string hash = 2;                  // block hash
+  uint64 timestamp = 3;             // timestamp
 }
 
-// Fee estimates (GET /fee-estimates)
+// Fee estimate
 message FeeEstimate {
-  uint32 confirmation_target_blocks = 1;
-  double feerate_sat_per_vb = 2;
+  uint32 confirmation_target_blocks = 1;  // confirmation target
+  double feerate_sat_per_vb = 2;    // fee rate in sat/vB
 }
 
 // Network statistics (GET /stats)
 message NetworkStats {
-  uint32 block_height = 1;
-  string block_hash = 2;
-  map<string, double> fee_estimates = 3; // Confirmation target -> feerate
-  uint32 mempool_count = 4;
-  uint64 mempool_vsize = 5;
-  uint64 mempool_total_fee = 6;
-  uint64 total_tx_count = 7;
-  uint64 total_fees = 8;
-  uint32 active_addresses = 9;
-  double avg_fee_rate = 10;
+  uint32 block_height = 1;          // block height
+  string block_hash = 2;            // block hash
+  map<string, double> fee_estimates = 3;  // fee estimates
+  uint32 mempool_count = 4;         // mempool count
+  uint64 mempool_vsize = 5;         // mempool vsize
+  uint64 mempool_total_fee = 6;     // mempool total fee
+  uint64 total_tx_count = 7;        // total tx count
+  uint64 total_fees = 8;            // total fees
+  uint32 active_addresses = 9;      // active addresses
+  double avg_fee_rate = 10;         // average fee rate
 }
 
-// Search result (GET /search/:query)
+// Search result
 message SearchResult {
-  string query = 1;
-  string result_type = 2; // "address", "tx", "block"
-  string result_id = 3;
-  optional string description = 4;
+  string query = 1;                 // search query
+  string result_type = 2;           // result type
+  string result_id = 3;             // result ID
+  string description = 4;           // description
 }
 
-// Webhook event for real-time notifications
+// Webhook event
 message WebhookEvent {
-  string event_type = 1; // "block", "tx", "address"
-  string event_id = 2;
-  uint64 timestamp = 3;
-  string data = 4; // JSON string of event data
+  string event_type = 1;            // event type
+  string event_id = 2;              // event ID
+  uint64 timestamp = 3;             // timestamp
+  string data = 4;                  // event data
 }
 
-// Asset information for Liquid/Elements
+// Asset information (Liquid/Elements)
 message AssetInfo {
-  string asset_id = 1;
-  uint64 tx_count = 2;
-  uint64 peg_in_count = 3;
-  uint64 peg_in_amount = 4;
-  uint64 peg_out_count = 5;
-  uint64 peg_out_amount = 6;
-  uint64 burn_count = 7;
-  uint64 burned_amount = 8;
+  string asset_id = 1;              // asset ID
+  uint64 tx_count = 2;              // transaction count
+  uint64 peg_in_count = 3;          // peg in count
+  uint64 peg_in_amount = 4;         // peg in amount
+  uint64 peg_out_count = 5;         // peg out count
+  uint64 peg_out_amount = 6;        // peg out amount
+  uint64 burn_count = 7;            // burn count
+  uint64 burned_amount = 8;         // burned amount
 }
 
-// Liquid asset (GET /asset/:assetid)
+// Liquid asset
 message LiquidAsset {
-  string asset_id = 1;
-  string name = 2;
-  string ticker = 3;
-  uint64 precision = 4;
-  uint64 tx_count = 5;
-  uint64 issued_amount = 6;
-  uint64 burned_amount = 7;
-  bool reissuable = 8;
+  string asset_id = 1;              // asset ID
+  string name = 2;                  // asset name
+  string ticker = 3;                // asset ticker
+  uint64 precision = 4;             // precision
+  uint64 tx_count = 5;              // transaction count
+  uint64 issued_amount = 6;         // issued amount
+  uint64 burned_amount = 7;         // burned amount
+  bool reissuable = 8;              // is reissuable
 }
 
-// Peg-in information
+// Peg in
 message PegIn {
-  string txid = 1;
-  uint64 amount = 2;
-  uint64 block_height = 3;
-  uint64 block_time = 4;
+  string txid = 1;                  // transaction ID
+  uint64 amount = 2;                // amount
+  uint64 block_height = 3;          // block height
+  uint64 block_time = 4;            // block time
 }
 
-// Peg-out information
+// Peg out
 message PegOut {
-  string txid = 1;
-  uint64 amount = 2;
-  uint64 block_height = 3;
-  uint64 block_time = 4;
+  string txid = 1;                  // transaction ID
+  uint64 amount = 2;                // amount
+  uint64 block_height = 3;          // block height
+  uint64 block_time = 4;            // block time
 }

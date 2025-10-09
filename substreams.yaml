@@ -1,22 +1,46 @@
 specVersion: v0.1.0
 package:
-  name: bitcoin-esplora-complete
-  version: v0.1.2
+  name: bitcoin-esplora-enhanced
+  version: v0.1.3
   url: https://github.com/PaulieB14/Bitcoin-Explorer-Substream
-  description: A comprehensive Bitcoin blockchain data processor that implements ALL Esplora API endpoints including blocks, transactions, addresses, mempool, network stats, search, webhooks, and Liquid/Elements support.
-  image: Bitcoin.png
+  description: Enhanced Bitcoin blockchain data processor built on top of substreams-bitcoin-main, providing Esplora API compatible output with real transaction data, addresses, and network statistics.
 
-# Bitcoin network configuration
 network: bitcoin
 
 binaries:
   default:
     type: wasm/rust-v1
-    file: target/wasm32-unknown-unknown/release/bitcoin_esplora_complete.wasm
+    file: target/wasm32-unknown-unknown/release/bitcoin_esplora_enhanced.wasm
 
 modules:
-  # Main processing module - implements all Esplora API endpoints
-  - name: map_esplora_complete_data
+  - name: map_block_esplora
+    kind: map
+    initialBlock: 0
+    inputs:
+      - source: sf.substreams.v1.Clock
+      - source: sf.bitcoin.v1.Block
+    output:
+      type: proto:sf.substreams.v1.Clock
+
+  - name: map_transactions_esplora
+    kind: map
+    initialBlock: 0
+    inputs:
+      - source: sf.substreams.v1.Clock
+      - source: sf.bitcoin.v1.Block
+    output:
+      type: proto:sf.substreams.v1.Clock
+
+  - name: map_addresses_esplora
+    kind: map
+    initialBlock: 0
+    inputs:
+      - source: sf.substreams.v1.Clock
+      - source: sf.bitcoin.v1.Block
+    output:
+      type: proto:sf.substreams.v1.Clock
+
+  - name: map_network_stats
     kind: map
     initialBlock: 0
     inputs:
