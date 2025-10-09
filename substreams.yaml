@@ -21,5 +21,6 @@ modules:
     initialBlock: 0
     inputs:
       - source: sf.substreams.v1.Clock
+      - source: sf.bitcoin.v1.Block
     output:
       type: proto:sf.substreams.v1.Clock
