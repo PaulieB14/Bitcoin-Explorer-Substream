@@ -4,6 +4,10 @@ package:
   version: v0.1.0
   url: https://github.com/PaulieB14/Bitcoin-Explorer-Substream
   description: A comprehensive Bitcoin blockchain data processor that implements ALL Esplora API endpoints including blocks, transactions, addresses, mempool, network stats, search, webhooks, and Liquid/Elements support.
+  image: Bitcoin.png
+
+# Bitcoin network configuration
+network: bitcoin
 
 binaries:
   default:
