@@ -1,0 +1,1 @@
+cargo:rerun-if-changed=proto/bitcoin_esplora.proto
