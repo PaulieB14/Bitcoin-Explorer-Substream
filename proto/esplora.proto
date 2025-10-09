@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package esplora.v1;
+
+// Complete Bitcoin data structure mimicking Esplora API
+message EsploraData {
+  // Block information
+  optional BlockInfo block = 1;
+  
+  // Complete transaction data
+  repeated TransactionInfo transactions = 2;
+  
+  // Address information
+  repeated AddressInfo addresses = 3;
+  
+  // Mempool data
+  optional MempoolInfo mempool = 4;
+  
+  // Network statistics
+  optional NetworkStats network_stats = 5;
+  
+  // Fee estimates
+  repeated FeeEstimate fee_estimates = 6;
+}
+
+// Block information (GET /block/:hash)
+message BlockInfo {
+  optional string id = 1;                    // block hash
+  optional uint32 height = 2;
+  optional uint32 version = 3;
+  optional uint64 timestamp = 4;
+  optional uint32 tx_count = 5;
+  optional uint64 size = 6;
+  optional uint64 weight = 7;
+  optional string merkle_root = 8;
+  optional string previous_hash = 9;
+}
+
+// Transaction information (GET /tx/:txid)
+message TransactionInfo {
+  optional string txid = 1;
+  optional uint32 version = 2;
+  optional uint64 fee = 3;
+  optional uint64 size = 4;
+  optional uint64 weight = 5;
+  optional uint32 input_count = 6;
+  optional uint32 output_count = 7;
+}
+
+// Address information (GET /address/:address)
+message AddressInfo {
+  optional string address = 1;
+  optional string address_type = 2;
+  optional uint32 tx_count = 3;
+  optional uint64 balance = 4;
+}
+
+// Mempool information (GET /mempool)
+message MempoolInfo {
+  optional uint32 count = 1;
+  optional uint64 vsize = 2;
+  optional uint64 total_fee = 3;
+}
+
+// Network statistics
+message NetworkStats {
+  optional uint64 total_tx_count = 1;
+  optional uint64 total_fees = 2;
+  optional uint32 active_addresses = 3;
+  optional double avg_fee_rate = 4;
+}
+
+// Fee estimates (GET /fee-estimates)
+message FeeEstimate {
+  optional uint32 confirmation_target = 1;  // blocks
+  optional double feerate = 2;              // sat/vB
+}

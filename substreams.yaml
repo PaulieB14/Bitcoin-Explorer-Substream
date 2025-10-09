@@ -1,0 +1,17 @@
+specVersion: v0.1.0
+package:
+  name: bitcoin-esplora-complete
+  version: v0.1.0
+
+binaries:
+  default:
+    type: wasm/rust-v1
+    file: ./target/wasm32-unknown-unknown/release/bitcoin_esplora_complete.wasm
+
+modules:
+  - name: map_esplora_data
+    kind: map
+    inputs:
+      - source: sf.substreams.v1.Clock
+    output:
+      type: proto:sf.substreams.v1.Clock

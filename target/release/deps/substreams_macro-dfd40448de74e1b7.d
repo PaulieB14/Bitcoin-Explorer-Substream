@@ -1,0 +1,9 @@
+/Users/paulbarba/bitcoin-esplora-complete/target/release/deps/substreams_macro-dfd40448de74e1b7.d: /Users/paulbarba/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/substreams-macro-0.0.21/src/lib.rs /Users/paulbarba/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/substreams-macro-0.0.21/src/config.rs /Users/paulbarba/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/substreams-macro-0.0.21/src/errors.rs /Users/paulbarba/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/substreams-macro-0.0.21/src/handler.rs /Users/paulbarba/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/substreams-macro-0.0.21/src/store.rs
+
+/Users/paulbarba/bitcoin-esplora-complete/target/release/deps/libsubstreams_macro-dfd40448de74e1b7.dylib: /Users/paulbarba/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/substreams-macro-0.0.21/src/lib.rs /Users/paulbarba/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/substreams-macro-0.0.21/src/config.rs /Users/paulbarba/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/substreams-macro-0.0.21/src/errors.rs /Users/paulbarba/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/substreams-macro-0.0.21/src/handler.rs /Users/paulbarba/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/substreams-macro-0.0.21/src/store.rs
+
+/Users/paulbarba/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/substreams-macro-0.0.21/src/lib.rs:
+/Users/paulbarba/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/substreams-macro-0.0.21/src/config.rs:
+/Users/paulbarba/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/substreams-macro-0.0.21/src/errors.rs:
+/Users/paulbarba/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/substreams-macro-0.0.21/src/handler.rs:
+/Users/paulbarba/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/substreams-macro-0.0.21/src/store.rs:
