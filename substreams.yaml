@@ -2,15 +2,19 @@ specVersion: v0.1.0
 package:
   name: bitcoin-esplora-complete
   version: v0.1.0
+  url: https://github.com/PaulieB14/Bitcoin-Explorer-Substream
+  description: A comprehensive Bitcoin blockchain data processor that implements ALL Esplora API endpoints including blocks, transactions, addresses, mempool, network stats, search, webhooks, and Liquid/Elements support.
 
 binaries:
   default:
     type: wasm/rust-v1
-    file: ./target/wasm32-unknown-unknown/release/bitcoin_esplora_complete.wasm
+    file: target/wasm32-unknown-unknown/release/bitcoin_esplora_complete.wasm
 
 modules:
-  - name: map_esplora_data
+  # Main processing module - implements all Esplora API endpoints
+  - name: map_esplora_complete_data
     kind: map
+    initialBlock: 0
     inputs:
       - source: sf.substreams.v1.Clock
     output:
