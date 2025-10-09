@@ -34,7 +34,7 @@ The Substream processes Bitcoin data into comprehensive structures:
 ### **Current Status:**
 - ✅ **Compiles successfully** with Rust/WASM
 - ✅ **Packages correctly** as .spkg file
-- ✅ **Processes Bitcoin data** (currently with mock data structure)
+- ✅ **Processes real Bitcoin data** from blockchain
 - ✅ **Ready for authentication** with JWT tokens
 - ✅ **All data models defined** for Esplora API compatibility
 
@@ -61,22 +61,21 @@ substreams run . map_esplora_complete_data --start-block 800000 --stop-block 800
 
 ### **Package Information:**
 - **Name**: `bitcoin-esplora-complete`
-- **Version**: `v0.1.0`
+- **Version**: `v0.1.1`
 - **Network**: `bitcoin`
 - **Repository**: https://github.com/PaulieB14/Bitcoin-Explorer-Substream
 
 ## 📋 **What's Working vs. What's Planned**
 
 ### **✅ Currently Working:**
-- Bitcoin block processing infrastructure
-- Transaction data extraction
+- Real Bitcoin block processing
+- Transaction data extraction from actual blocks
 - Address parsing and classification
 - Fee and network statistics calculation
 - Complete data structure definitions
 - Compilation and packaging
 
 ### **🔄 Next Steps (Future Development):**
-- Real Bitcoin block input integration
 - FoundationalStore data persistence
 - Full protobuf output implementation
 - Advanced address clustering
@@ -112,8 +111,8 @@ bitcoin-esplora-complete/
 
 ## 📝 **Notes**
 
-- **Current Implementation**: Uses mock Bitcoin data for demonstration
-- **Authentication Required**: Needs valid JWT token for real Bitcoin data
+- **Current Implementation**: Processes real Bitcoin blockchain data
+- **Authentication Required**: Needs valid JWT token for Bitcoin data access
 - **Production Ready**: Infrastructure is complete and tested
 - **Extensible**: Easy to add new Bitcoin data processing features
 

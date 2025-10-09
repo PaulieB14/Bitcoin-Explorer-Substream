@@ -265,53 +265,8 @@ pub struct PegOut {
     pub block_time: u64,
 }
 
-// For now, we'll use simplified Bitcoin data structures
-// In a real implementation, you'd import the proper Bitcoin protobuf types
-#[derive(Clone)]
-struct BitcoinBlock {
-    hash: Vec<u8>,
-    height: u32,
-    header: Option<BitcoinHeader>,
-    transactions: Vec<BitcoinTransaction>,
-}
-
-#[derive(Clone)]
-struct BitcoinHeader {
-    version: u32,
-    timestamp: u64,
-    bits: u32,
-    nonce: u32,
-    merkle_root: Vec<u8>,
-    prev_block_hash: Vec<u8>,
-}
-
-#[derive(Clone)]
-struct BitcoinTransaction {
-    hash: Vec<u8>,
-    version: u32,
-    locktime: u32,
-    inputs: Vec<BitcoinTxIn>,
-    outputs: Vec<BitcoinTxOut>,
-}
-
-#[derive(Clone)]
-struct BitcoinTxIn {
-    previous_output: BitcoinOutPoint,
-    script_sig: Vec<u8>,
-    sequence: u32,
-}
-
-#[derive(Clone)]
-struct BitcoinTxOut {
-    script_pubkey: Vec<u8>,
-    value: u64,
-}
-
-#[derive(Clone)]
-struct BitcoinOutPoint {
-    txid: Vec<u8>,
-    vout: u32,
-}
+// Import real Bitcoin protobuf types
+use substreams_bitcoin::pb::btc::v1::{Block, Transaction, Vin, Vout};
 
 /// Main Esplora Complete Substream - implements ALL Esplora API endpoints
 /// 
@@ -319,10 +274,8 @@ struct BitcoinOutPoint {
 /// that mimics the complete functionality of the Esplora API
 
 #[substreams::handlers::map]
-fn map_esplora_complete_data(clock: Clock) -> Result<Clock, Error> {
-    // For now, we'll create a mock Bitcoin block to demonstrate the processing
-    // In a real implementation, this would receive actual Bitcoin block data
-    let block = create_mock_bitcoin_block(&clock);
+fn map_esplora_complete_data(clock: Clock, block: Block) -> Result<Clock, Error> {
+    // Process real Bitcoin block data
     // Create the main data structure
     let mut esplora_data = EsploraCompleteData {
         block: Some(process_block_info(&block, &clock)),
@@ -365,152 +318,108 @@ fn map_esplora_complete_data(clock: Clock) -> Result<Clock, Error> {
     Ok(clock)
 }
 
-/// Create a mock Bitcoin block for demonstration
-fn create_mock_bitcoin_block(clock: &Clock) -> BitcoinBlock {
-    BitcoinBlock {
-        hash: vec![0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0],
-        height: 800000,
-        header: Some(BitcoinHeader {
-            version: 0x20000000,
-            timestamp: clock.timestamp.clone().unwrap_or_default().seconds as u64,
-            bits: 0x1d00ffff,
-            nonce: 1234567890,
-            merkle_root: vec![0xab, 0xcd, 0xef, 0x12, 0x34, 0x56, 0x78, 0x9a],
-            prev_block_hash: vec![0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88],
-        }),
-        transactions: vec![
-            BitcoinTransaction {
-                hash: vec![0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x11],
-                version: 1,
-                locktime: 0,
-                inputs: vec![
-                    BitcoinTxIn {
-                        previous_output: BitcoinOutPoint {
-                            txid: vec![0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-                            vout: 0xffffffff,
-                        },
-                        script_sig: vec![0x04, 0xff, 0xff, 0x00, 0x1d, 0x01, 0x04, 0x45],
-                        sequence: 0xffffffff,
-                    }
-                ],
-                outputs: vec![
-                    BitcoinTxOut {
-                        script_pubkey: vec![0x76, 0xa9, 0x14, 0x89, 0xab, 0xcd, 0xef, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0xac],
-                        value: 5000000000, // 50 BTC in satoshis
-                    }
-                ],
-            }
-        ],
-    }
-}
 
 /// Process block information (GET /block/:hash)
-fn process_block_info(block: &BitcoinBlock, clock: &Clock) -> BlockInfo {
+fn process_block_info(block: &Block, clock: &Clock) -> BlockInfo {
     BlockInfo {
-        id: hex::encode(&block.hash),
-        height: block.height,
-        version: block.header.as_ref().map(|h| h.version).unwrap_or(0),
-        timestamp: block.header.as_ref().map(|h| h.timestamp).unwrap_or(0),
-        bits: block.header.as_ref().map(|h| h.bits).unwrap_or(0),
-        nonce: block.header.as_ref().map(|h| h.nonce).unwrap_or(0),
-        tx_count: block.transactions.len() as u32,
-        size: calculate_block_size(block),
-        weight: calculate_block_weight(block),
-        merkle_root: block.header.as_ref()
-            .map(|h| hex::encode(&h.merkle_root))
-            .unwrap_or_default(),
-        previous_hash: block.header.as_ref()
-            .map(|h| hex::encode(&h.prev_block_hash))
-            .unwrap_or_default(),
+        id: block.hash.clone(),
+        height: block.height as u32,
+        version: block.version as u32,
+        timestamp: block.time as u64,
+        bits: block.bits.parse::<u32>().unwrap_or(0),
+        nonce: block.nonce,
+        tx_count: block.tx.len() as u32,
+        size: block.size as u64,
+        weight: block.weight as u64,
+        merkle_root: block.merkle_root.clone(),
+        previous_hash: "".to_string(), // Not available in this structure
         difficulty: calculate_difficulty(block),
-        mediantime: clock.timestamp.clone().unwrap_or_default().seconds.to_string(),
+        mediantime: block.mediantime.to_string(),
     }
 }
 
 /// Process block summary (GET /blocks)
-fn process_block_summary(block: &BitcoinBlock) -> BlockSummary {
+fn process_block_summary(block: &Block) -> BlockSummary {
     BlockSummary {
-        id: hex::encode(&block.hash),
-        height: block.height,
-        timestamp: block.header.as_ref().map(|h| h.timestamp).unwrap_or(0),
-        tx_count: block.transactions.len() as u32,
-        size: calculate_block_size(block),
-        weight: calculate_block_weight(block),
+        id: block.hash.clone(),
+        height: block.height as u32,
+        timestamp: block.time as u64,
+        tx_count: block.tx.len() as u32,
+        size: block.size as u64,
+        weight: block.weight as u64,
     }
 }
 
 /// Process block transactions (GET /block/:hash/txs)
-fn process_block_transactions(block: &BitcoinBlock) -> Vec<TransactionInfo> {
-    block.transactions.iter().map(|tx| process_transaction_info(tx)).collect()
+fn process_block_transactions(block: &Block) -> Vec<TransactionInfo> {
+    block.tx.iter().map(|tx| process_transaction_info(tx)).collect()
 }
 
 /// Process all transactions in the block
-fn process_transactions(block: &BitcoinBlock) -> Vec<TransactionInfo> {
-    block.transactions.iter().map(|tx| process_transaction_info(tx)).collect()
+fn process_transactions(block: &Block) -> Vec<TransactionInfo> {
+    block.tx.iter().map(|tx| process_transaction_info(tx)).collect()
 }
 
 /// Process individual transaction information (GET /tx/:txid)
-fn process_transaction_info(tx: &BitcoinTransaction) -> TransactionInfo {
-    let txid = hex::encode(&tx.hash);
-    
+fn process_transaction_info(tx: &Transaction) -> TransactionInfo {
     TransactionInfo {
-        txid,
+        txid: tx.txid.clone(),
         version: tx.version,
         locktime: tx.locktime,
-        size: calculate_tx_size(tx),
-        weight: calculate_tx_weight(tx),
+        size: tx.size as u64,
+        weight: tx.weight as u64,
         fee: calculate_tx_fee(tx),
-        inputs: tx.inputs.iter().map(|input| process_tx_input(input)).collect(),
-        outputs: tx.outputs.iter().map(|output| process_tx_output(output)).collect(),
+        inputs: tx.vin.iter().map(|input| process_tx_input(input)).collect(),
+        outputs: tx.vout.iter().map(|output| process_tx_output(output)).collect(),
         status: Some(TxStatus {
             confirmed: true,
             block_height: Some(0), // Will be set by caller
-            block_hash: Some(hex::encode(&tx.hash)),
-            block_time: Some(0), // Will be set by caller
+            block_hash: Some(tx.blockhash.clone()),
+            block_time: Some(tx.blocktime as u64),
         }),
         witness: vec![], // TODO: Process witness data
     }
 }
 
 /// Process transaction input
-fn process_tx_input(input: &BitcoinTxIn) -> TxInput {
+fn process_tx_input(input: &Vin) -> TxInput {
     TxInput {
-        txid: hex::encode(&input.previous_output.txid),
-        vout: input.previous_output.vout,
-        is_coinbase: input.previous_output.txid.is_empty(),
-        scriptsig: hex::encode(&input.script_sig),
-        scriptsig_asm: "TODO: Parse script".to_string(),
-        witness: vec![],
+        txid: input.txid.clone(),
+        vout: input.vout,
+        is_coinbase: !input.coinbase.is_empty(),
+        scriptsig: input.script_sig.as_ref().map(|s| s.hex.clone()).unwrap_or_default(),
+        scriptsig_asm: input.script_sig.as_ref().map(|s| s.asm.clone()).unwrap_or_default(),
+        witness: input.txinwitness.clone(),
         sequence: input.sequence,
         prevout: None, // TODO: Look up previous output
     }
 }
 
 /// Process transaction output
-fn process_tx_output(output: &BitcoinTxOut) -> TxOutput {
-    let scriptpubkey = hex::encode(&output.script_pubkey);
-    let address = extract_address(&output.script_pubkey);
+fn process_tx_output(output: &Vout) -> TxOutput {
+    let scriptpubkey = output.script_pub_key.as_ref().map(|s| s.hex.clone()).unwrap_or_default();
+    let address = output.script_pub_key.as_ref().map(|s| s.address.clone()).unwrap_or_default();
     
     TxOutput {
         scriptpubkey,
-        scriptpubkey_asm: "TODO: Parse script".to_string(),
-        scriptpubkey_type: determine_script_type(&output.script_pubkey),
+        scriptpubkey_asm: output.script_pub_key.as_ref().map(|s| s.asm.clone()).unwrap_or_default(),
+        scriptpubkey_type: output.script_pub_key.as_ref().map(|s| s.r#type.clone()).unwrap_or_default(),
         scriptpubkey_address: address,
-        value: output.value,
+        value: (output.value * 100_000_000.0) as u64, // Convert BTC to satoshis
     }
 }
 
 /// Process addresses from block transactions
-fn process_addresses(block: &BitcoinBlock) -> Vec<AddressInfo> {
+fn process_addresses(block: &Block) -> Vec<AddressInfo> {
     let mut addresses = std::collections::HashMap::new();
     
-    for tx in &block.transactions {
-        for output in &tx.outputs {
-            let address = extract_address(&output.script_pubkey);
+    for tx in &block.tx {
+        for output in &tx.vout {
+            let address = output.script_pub_key.as_ref().map(|s| s.address.clone()).unwrap_or_default();
             if !address.is_empty() {
                 let entry = addresses.entry(address.clone()).or_insert(AddressInfo {
                     address: address.clone(),
-                    address_type: determine_script_type(&output.script_pubkey),
+                    address_type: output.script_pub_key.as_ref().map(|s| s.r#type.clone()).unwrap_or_default(),
                     funded_txo_count: 0,
                     funded_txo_sum: 0,
                     spent_txo_count: 0,
@@ -523,7 +432,7 @@ fn process_addresses(block: &BitcoinBlock) -> Vec<AddressInfo> {
                     utxos: vec![],
                 });
                 entry.funded_txo_count += 1;
-                entry.funded_txo_sum += output.value;
+                entry.funded_txo_sum += (output.value * 100_000_000.0) as u64;
             }
         }
     }
@@ -532,23 +441,23 @@ fn process_addresses(block: &BitcoinBlock) -> Vec<AddressInfo> {
 }
 
 /// Process address transactions
-fn process_address_transactions(block: &BitcoinBlock) -> Vec<AddressTransaction> {
+fn process_address_transactions(block: &Block) -> Vec<AddressTransaction> {
     let mut address_txs = Vec::new();
     
-    for tx in &block.transactions {
-        let txid = hex::encode(&tx.hash);
+    for tx in &block.tx {
+        let txid = tx.txid.clone();
         let fee = calculate_tx_fee(tx);
         
-        for output in &tx.outputs {
-            let address = extract_address(&output.script_pubkey);
+        for output in &tx.vout {
+            let address = output.script_pub_key.as_ref().map(|s| s.address.clone()).unwrap_or_default();
             if !address.is_empty() {
                 address_txs.push(AddressTransaction {
                     address,
                     txid: txid.clone(),
-                    value: output.value,
+                    value: (output.value * 100_000_000.0) as u64,
                     fee,
                     block_height: block.height as u64,
-                    block_time: block.header.as_ref().map(|h| h.timestamp).unwrap_or(0),
+                    block_time: block.time as u64,
                 });
             }
         }
@@ -558,22 +467,22 @@ fn process_address_transactions(block: &BitcoinBlock) -> Vec<AddressTransaction>
 }
 
 /// Process address UTXOs
-fn process_address_utxos(block: &BitcoinBlock) -> Vec<AddressUtxo> {
+fn process_address_utxos(block: &Block) -> Vec<AddressUtxo> {
     let mut utxos = Vec::new();
     
-    for tx in &block.transactions {
-        let txid = hex::encode(&tx.hash);
+    for tx in &block.tx {
+        let txid = tx.txid.clone();
         
-        for (vout, output) in tx.outputs.iter().enumerate() {
-            let address = extract_address(&output.script_pubkey);
+        for (vout, output) in tx.vout.iter().enumerate() {
+            let address = output.script_pub_key.as_ref().map(|s| s.address.clone()).unwrap_or_default();
             if !address.is_empty() {
                 utxos.push(AddressUtxo {
                     address,
                     txid: txid.clone(),
                     vout: vout as u32,
-                    value: output.value,
+                    value: (output.value * 100_000_000.0) as u64,
                     block_height: block.height as u64,
-                    block_time: block.header.as_ref().map(|h| h.timestamp).unwrap_or(0),
+                    block_time: block.time as u64,
                 });
             }
         }
@@ -583,44 +492,44 @@ fn process_address_utxos(block: &BitcoinBlock) -> Vec<AddressUtxo> {
 }
 
 /// Process transaction statuses
-fn process_transaction_statuses(block: &BitcoinBlock, clock: &Clock) -> Vec<TransactionStatus> {
-    block.transactions.iter().map(|tx| {
+fn process_transaction_statuses(block: &Block, clock: &Clock) -> Vec<TransactionStatus> {
+    block.tx.iter().map(|tx| {
         TransactionStatus {
-            txid: hex::encode(&tx.hash),
+            txid: tx.txid.clone(),
             confirmed: true,
-            block_height: Some(block.height),
-            block_hash: Some(hex::encode(&block.hash)),
-            block_time: Some(clock.timestamp.clone().unwrap_or_default().seconds as u64),
+            block_height: Some(block.height as u32),
+            block_hash: Some(block.hash.clone()),
+            block_time: Some(block.time as u64),
         }
     }).collect()
 }
 
 /// Process network tip (GET /blocks/tip/height)
-fn process_network_tip(block: &BitcoinBlock, clock: &Clock) -> NetworkTip {
+fn process_network_tip(block: &Block, clock: &Clock) -> NetworkTip {
     NetworkTip {
-        height: block.height,
-        hash: hex::encode(&block.hash),
-        timestamp: clock.timestamp.clone().unwrap_or_default().seconds as u64,
+        height: block.height as u32,
+        hash: block.hash.clone(),
+        timestamp: block.time as u64,
     }
 }
 
 /// Process network statistics (GET /stats)
-fn process_network_stats(block: &BitcoinBlock) -> NetworkStats {
-    let total_fees: u64 = block.transactions.iter().map(|tx| calculate_tx_fee(tx)).sum();
-    let avg_fee_rate = if !block.transactions.is_empty() {
-        total_fees as f64 / block.transactions.len() as f64
+fn process_network_stats(block: &Block) -> NetworkStats {
+    let total_fees: u64 = block.tx.iter().map(|tx| calculate_tx_fee(tx)).sum();
+    let avg_fee_rate = if !block.tx.is_empty() {
+        total_fees as f64 / block.tx.len() as f64
     } else {
         0.0
     };
     
     NetworkStats {
-        block_height: block.height,
-        block_hash: hex::encode(&block.hash),
+        block_height: block.height as u32,
+        block_hash: block.hash.clone(),
         fee_estimates: std::collections::HashMap::new(),
         mempool_count: 0,
         mempool_vsize: 0,
         mempool_total_fee: 0,
-        total_tx_count: block.transactions.len() as u64,
+        total_tx_count: block.tx.len() as u64,
         total_fees: total_fees,
         active_addresses: count_unique_addresses(block),
         avg_fee_rate,
@@ -628,29 +537,29 @@ fn process_network_stats(block: &BitcoinBlock) -> NetworkStats {
 }
 
 /// Generate webhook events
-fn generate_webhook_events(block: &BitcoinBlock, clock: &Clock) -> Vec<WebhookEvent> {
+fn generate_webhook_events(block: &Block, clock: &Clock) -> Vec<WebhookEvent> {
     let mut events = Vec::new();
     
     // Block event
     events.push(WebhookEvent {
         event_type: "block".to_string(),
-        event_id: hex::encode(&block.hash),
-        timestamp: clock.timestamp.clone().unwrap_or_default().seconds as u64,
+        event_id: block.hash.clone(),
+        timestamp: block.time as u64,
         data: format!(r#"{{"height":{},"hash":"{}","tx_count":{}}}"#, 
                      block.height, 
-                     hex::encode(&block.hash), 
-                     block.transactions.len()),
+                     block.hash, 
+                     block.tx.len()),
     });
     
     // Transaction events
-    for tx in &block.transactions {
+    for tx in &block.tx {
         events.push(WebhookEvent {
             event_type: "tx".to_string(),
-            event_id: hex::encode(&tx.hash),
-            timestamp: clock.timestamp.clone().unwrap_or_default().seconds as u64,
+            event_id: tx.txid.clone(),
+            timestamp: block.time as u64,
             data: format!(r#"{{"txid":"{}","size":{},"fee":{}}}"#, 
-                         hex::encode(&tx.hash),
-                         calculate_tx_size(tx),
+                         tx.txid,
+                         tx.size,
                          calculate_tx_fee(tx)),
         });
     }
@@ -660,30 +569,27 @@ fn generate_webhook_events(block: &BitcoinBlock, clock: &Clock) -> Vec<WebhookEv
 
 // Helper functions
 
-fn calculate_block_size(block: &BitcoinBlock) -> u64 {
-    // Simplified block size calculation
-    block.transactions.len() as u64 * 250 // Rough estimate
+fn calculate_block_size(block: &Block) -> u64 {
+    block.size as u64
 }
 
-fn calculate_block_weight(block: &BitcoinBlock) -> u64 {
-    // Simplified block weight calculation
-    calculate_block_size(block) * 4 // Rough estimate
+fn calculate_block_weight(block: &Block) -> u64 {
+    block.weight as u64
 }
 
-fn calculate_tx_size(tx: &BitcoinTransaction) -> u64 {
-    // Simplified transaction size calculation
-    tx.inputs.len() as u64 * 150 + tx.outputs.len() as u64 * 50 // Rough estimate
+fn calculate_tx_size(tx: &Transaction) -> u64 {
+    tx.size as u64
 }
 
-fn calculate_tx_weight(tx: &BitcoinTransaction) -> u64 {
-    // Simplified transaction weight calculation
-    calculate_tx_size(tx) * 4 // Rough estimate
+fn calculate_tx_weight(tx: &Transaction) -> u64 {
+    tx.weight as u64
 }
 
-fn calculate_tx_fee(tx: &BitcoinTransaction) -> u64 {
-    // Simplified fee calculation
-    let input_total: u64 = tx.inputs.iter().map(|_| 100000).sum(); // Rough estimate
-    let output_total: u64 = tx.outputs.iter().map(|o| o.value).sum();
+fn calculate_tx_fee(tx: &Transaction) -> u64 {
+    // Simplified fee calculation - in real implementation, this would need to look up input values
+    // For now, we'll use a placeholder calculation
+    let input_total: u64 = tx.vin.len() as u64 * 100000; // Rough estimate
+    let output_total: u64 = tx.vout.iter().map(|o| (o.value * 100_000_000.0) as u64).sum();
     
     if input_total > output_total {
         input_total - output_total
@@ -692,11 +598,9 @@ fn calculate_tx_fee(tx: &BitcoinTransaction) -> u64 {
     }
 }
 
-fn calculate_difficulty(block: &BitcoinBlock) -> f64 {
-    // Simplified difficulty calculation
-    if let Some(header) = &block.header {
-        let bits = header.bits;
-        // Simple difficulty calculation based on bits
+fn calculate_difficulty(block: &Block) -> f64 {
+    // Simplified difficulty calculation based on bits
+    if let Ok(bits) = block.bits.parse::<u32>() {
         if bits > 0 {
             (0x1d00ffff as f64) / (bits as f64)
         } else {
@@ -754,12 +658,12 @@ fn determine_script_type(script_pubkey: &[u8]) -> String {
     "unknown".to_string()
 }
 
-fn count_unique_addresses(block: &BitcoinBlock) -> u32 {
+fn count_unique_addresses(block: &Block) -> u32 {
     let mut addresses = std::collections::HashSet::new();
     
-    for tx in &block.transactions {
-        for output in &tx.outputs {
-            let address = extract_address(&output.script_pubkey);
+    for tx in &block.tx {
+        for output in &tx.vout {
+            let address = output.script_pub_key.as_ref().map(|s| s.address.clone()).unwrap_or_default();
             if !address.is_empty() {
                 addresses.insert(address);
             }

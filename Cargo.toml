@@ -8,6 +8,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 substreams = "0.0.21"
+substreams-bitcoin = "1.0.0"
 prost = "0.11.9"
 prost-types = "0.11.9"
 hex = "0.4.3"
