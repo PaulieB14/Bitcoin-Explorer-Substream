@@ -1,0 +1,25 @@
+# Build artifacts
+target/
+*.spkg
+
+# Generated protobuf code
+src/pb/
+
+# Logs and temp files
+*.log
+*.tmp
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test data and samples
+*.json
+
+# Environment
+.env

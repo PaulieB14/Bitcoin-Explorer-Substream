@@ -1,6 +1,6 @@
 [package]
 name = "bitcoin-esplora-enhanced"
-version = "0.1.4"
+version = "0.2.0"
 edition = "2021"
 
 [lib]
@@ -11,9 +11,6 @@ substreams = "0.0.21"
 substreams-bitcoin = "1.0.0"
 prost = "0.11.9"
 prost-types = "0.11.9"
-hex = "0.4.3"
-sha2 = "0.10.8"
-ripemd = "0.1.1"
 
 [build-dependencies]
 prost-build = "0.11.9"

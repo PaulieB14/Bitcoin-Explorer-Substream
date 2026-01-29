@@ -1,89 +1,75 @@
-# Bitcoin Esplora Complete Substream Makefile
+# Bitcoin Esplora Enhanced Substream Makefile
 
-.PHONY: build pack run gui info clean test
+.PHONY: build pack run gui info clean test check fmt help
 
 # Build the Substream
 build:
-	@echo "🔨 Building Bitcoin Esplora Complete Substream..."
 	cargo build --release --target wasm32-unknown-unknown
-	@echo "✅ Build complete!"
 
 # Package the Substream
 pack: build
-	@echo "📦 Packaging Substream..."
 	substreams pack
-	@echo "✅ Package created: substreams.spkg"
 
-# Run the Substream with console output
-run: pack
-	@echo "🚀 Running Bitcoin Esplora Complete Substream..."
-	substreams run map_esplora_data --start-block 800000
+# Run block data module
+run-blocks: pack
+	substreams run -e btc.substreams.pinax.network:443 map_block_esplora --start-block 800000 --stop-block +10
+
+# Run transactions module
+run-txs: pack
+	substreams run -e btc.substreams.pinax.network:443 map_transactions_esplora --start-block 800000 --stop-block +10
+
+# Run addresses module
+run-addrs: pack
+	substreams run -e btc.substreams.pinax.network:443 map_addresses_esplora --start-block 800000 --stop-block +10
+
+# Run network stats module
+run-stats: pack
+	substreams run -e btc.substreams.pinax.network:443 map_network_stats --start-block 800000 --stop-block +10
 
 # Run with GUI
 gui: pack
-	@echo "🖥️  Starting Substreams GUI..."
-	substreams gui map_esplora_data --start-block 800000
+	substreams gui -e btc.substreams.pinax.network:443 map_block_esplora --start-block 800000
 
 # Get package information
 info: pack
-	@echo "📋 Package Information:"
 	substreams info
 
-# Run with specific block range
+# Test with specific block range
 test: pack
-	@echo "🧪 Testing with block range 800000-800010..."
-	substreams run map_esplora_data --start-block 800000 --stop-block 800010
-
-# Run with JSON output
-json: pack
-	@echo "📄 Running with JSON output..."
-	substreams run map_esplora_data --start-block 800000 --output json
+	substreams run -e btc.substreams.pinax.network:443 map_block_esplora --start-block 800000 --stop-block 800010
 
 # Clean build artifacts
 clean:
-	@echo "🧹 Cleaning build artifacts..."
 	cargo clean
-	rm -f substreams.spkg
-	@echo "✅ Clean complete!"
-
-# Install dependencies
-install:
-	@echo "📥 Installing dependencies..."
-	cargo install substreams
-	@echo "✅ Dependencies installed!"
+	rm -f *.spkg
 
 # Check code
 check:
-	@echo "🔍 Checking code..."
 	cargo check
-	@echo "✅ Code check complete!"
 
 # Format code
 fmt:
-	@echo "🎨 Formatting code..."
 	cargo fmt
-	@echo "✅ Code formatted!"
 
 # Run tests
 test-unit:
-	@echo "🧪 Running unit tests..."
 	cargo test
-	@echo "✅ Tests complete!"
 
 # Help
 help:
-	@echo "Bitcoin Esplora Complete Substream - Available Commands:"
+	@echo "Bitcoin Esplora Enhanced Substream v0.2.0"
 	@echo ""
-	@echo "  build     - Build the Substream"
-	@echo "  pack      - Package the Substream"
-	@echo "  run       - Run with console output"
-	@echo "  gui       - Run with GUI"
-	@echo "  info      - Show package information"
-	@echo "  test      - Test with block range"
-	@echo "  json      - Run with JSON output"
-	@echo "  clean     - Clean build artifacts"
-	@echo "  install   - Install dependencies"
-	@echo "  check     - Check code"
-	@echo "  fmt       - Format code"
-	@echo "  test-unit - Run unit tests"
-	@echo "  help      - Show this help"
+	@echo "Commands:"
+	@echo "  build      - Build the Substream WASM"
+	@echo "  pack       - Package the Substream (.spkg)"
+	@echo "  run-blocks - Run block data module"
+	@echo "  run-txs    - Run transactions module"
+	@echo "  run-addrs  - Run addresses module"
+	@echo "  run-stats  - Run network stats module"
+	@echo "  gui        - Run with GUI"
+	@echo "  info       - Show package information"
+	@echo "  test       - Test with block range 800000-800010"
+	@echo "  clean      - Clean build artifacts"
+	@echo "  check      - Check code"
+	@echo "  fmt        - Format code"
+	@echo "  test-unit  - Run unit tests"

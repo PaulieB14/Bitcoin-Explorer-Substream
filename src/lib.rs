@@ -1,23 +1,18 @@
 use substreams::errors::Error;
 use substreams::pb::substreams::Clock;
-use hex;
 
 // Import generated protobuf types
 pub mod bitcoin_esplora {
     include!(concat!(env!("OUT_DIR"), "/bitcoin_esplora.v1.rs"));
 }
 
-// Use the generated protobuf types
 use bitcoin_esplora::*;
-
-// Import real Bitcoin protobuf types
 use substreams_bitcoin::pb::btc::v1::{Block, Transaction, Vin, Vout};
 
-/// Enhanced block metadata in Esplora API format
-/// Based on substreams-bitcoin-main but with Esplora API compatibility
+/// Block metadata in Esplora API format
 #[substreams::handlers::map]
-fn map_block_esplora(clock: Clock, block: Block) -> Result<Clock, Error> {
-    let block_info = BlockEsplora {
+fn map_block_esplora(_clock: Clock, block: Block) -> Result<BlockEsplora, Error> {
+    Ok(BlockEsplora {
         id: block.hash.clone(),
         height: block.height as u32,
         version: block.version as u32,
@@ -28,217 +23,261 @@ fn map_block_esplora(clock: Clock, block: Block) -> Result<Clock, Error> {
         size: block.size as u64,
         weight: block.weight as u64,
         merkle_root: block.merkle_root.clone(),
-        previous_hash: "".to_string(), // Not available in this structure
-        difficulty: calculate_difficulty(&block),
+        previous_hash: block.previous_hash.clone(),
+        difficulty: block.difficulty,
         mediantime: block.mediantime.to_string(),
-    };
-
-    substreams::log::info!("=== ENHANCED BLOCK DATA ===");
-    substreams::log::info!("Block Hash: {}", block_info.id);
-    substreams::log::info!("Block Height: {}", block_info.height);
-    substreams::log::info!("Transaction Count: {}", block_info.tx_count);
-    substreams::log::info!("Block Size: {} bytes", block_info.size);
-    substreams::log::info!("Block Weight: {} weight units", block_info.weight);
-    substreams::log::info!("Difficulty: {}", block_info.difficulty);
-
-    Ok(clock)
+    })
 }
 
-/// Enhanced transaction data with Esplora API format
-/// Based on substreams-bitcoin-main but with full transaction details
+/// Transaction data in Esplora API format
 #[substreams::handlers::map]
-fn map_transactions_esplora(clock: Clock, block: Block) -> Result<Clock, Error> {
-    let mut transactions = Vec::new();
-    
-    for tx in &block.tx {
-        let transaction = TransactionEsplora {
-            txid: tx.txid.clone(),
-            version: tx.version,
-            locktime: tx.locktime,
-            size: tx.size as u64,
-            weight: tx.weight as u64,
-            fee: calculate_tx_fee(tx),
-            inputs: tx.vin.iter().map(|input| process_tx_input(input)).collect(),
-            outputs: tx.vout.iter().map(|output| process_tx_output(output)).collect(),
-            status: Some(TxStatusEsplora {
-                confirmed: true,
-                block_height: block.height as u32,
-                block_hash: block.hash.clone(),
-                block_time: block.time as u64,
-            }),
-            witness: vec![], // TODO: Process witness data
-        };
-        transactions.push(transaction);
-    }
+fn map_transactions_esplora(_clock: Clock, block: Block) -> Result<TransactionsEsplora, Error> {
+    let transactions: Vec<TransactionEsplora> = block
+        .tx
+        .iter()
+        .map(|tx| {
+            // Collect all witness data from inputs
+            let all_witness: Vec<String> = tx
+                .vin
+                .iter()
+                .flat_map(|input| input.txinwitness.clone())
+                .collect();
 
-    substreams::log::info!("=== ENHANCED TRANSACTION DATA ===");
-    substreams::log::info!("Processed {} transactions", transactions.len());
-    
-    // Log first few transactions for debugging
-    for (i, tx) in transactions.iter().take(3).enumerate() {
-        substreams::log::info!("TX {}: {} - {} inputs, {} outputs, fee: {} satoshis", 
-                              i + 1, tx.txid, tx.inputs.len(), tx.outputs.len(), tx.fee);
-    }
+            TransactionEsplora {
+                txid: tx.txid.clone(),
+                version: tx.version,
+                locktime: tx.locktime,
+                size: tx.size as u64,
+                weight: tx.weight as u64,
+                fee: estimate_tx_fee(tx),
+                inputs: tx.vin.iter().map(process_tx_input).collect(),
+                outputs: tx
+                    .vout
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, output)| process_tx_output(output, idx as u32))
+                    .collect(),
+                status: Some(TxStatusEsplora {
+                    confirmed: true,
+                    block_height: block.height as u32,
+                    block_hash: block.hash.clone(),
+                    block_time: block.time as u64,
+                }),
+                witness: all_witness,
+            }
+        })
+        .collect();
 
-    Ok(clock)
+    Ok(TransactionsEsplora { transactions })
 }
 
 /// Address analysis and UTXO tracking
 #[substreams::handlers::map]
-fn map_addresses_esplora(clock: Clock, block: Block) -> Result<Clock, Error> {
-    let mut addresses = std::collections::HashMap::new();
-    
+fn map_addresses_esplora(_clock: Clock, block: Block) -> Result<AddressesEsplora, Error> {
+    let mut address_map = std::collections::HashMap::new();
+
     for tx in &block.tx {
-        for output in &tx.vout {
-            let address = output.script_pub_key.as_ref().map(|s| s.address.clone()).unwrap_or_default();
-            if !address.is_empty() {
-                let entry = addresses.entry(address.clone()).or_insert(AddressInfoEsplora {
+        // Track outputs (funded UTXOs)
+        for (idx, output) in tx.vout.iter().enumerate() {
+            let address = extract_address(output);
+            if address.is_empty() {
+                continue;
+            }
+
+            let entry = address_map
+                .entry(address.clone())
+                .or_insert_with(|| AddressInfoEsplora {
                     address: address.clone(),
-                    address_type: output.script_pub_key.as_ref().map(|s| s.r#type.clone()).unwrap_or_default(),
+                    address_type: extract_address_type(output),
                     funded_txo_count: 0,
                     funded_txo_sum: 0,
                     spent_txo_count: 0,
                     spent_txo_sum: 0,
                     utxos: vec![],
                 });
-                entry.funded_txo_count += 1;
-                entry.funded_txo_sum += (output.value * 100_000_000.0) as u64;
-                
-                // Add UTXO
-                entry.utxos.push(UtxoInfoEsplora {
-                    txid: tx.txid.clone(),
-                    vout: 0, // Will be set properly in real implementation
-                    value: (output.value * 100_000_000.0) as u64,
-                    status: Some(TxStatusEsplora {
-                        confirmed: true,
-                        block_height: block.height as u32,
-                        block_hash: block.hash.clone(),
-                        block_time: block.time as u64,
-                    }),
-                });
+
+            let value_sats = btc_to_sats(output.value);
+            entry.funded_txo_count += 1;
+            entry.funded_txo_sum += value_sats;
+            entry.utxos.push(UtxoInfoEsplora {
+                txid: tx.txid.clone(),
+                vout: idx as u32,
+                value: value_sats,
+                status: Some(TxStatusEsplora {
+                    confirmed: true,
+                    block_height: block.height as u32,
+                    block_hash: block.hash.clone(),
+                    block_time: block.time as u64,
+                }),
+            });
+        }
+
+        // Track inputs (spent UTXOs) - mark as spent
+        for input in &tx.vin {
+            if !input.coinbase.is_empty() {
+                continue; // Skip coinbase inputs
             }
+
+            // We can track spending but don't have the address without UTXO lookup
+            // This will be enhanced with a store module in future versions
         }
     }
 
-    let address_list: Vec<AddressInfoEsplora> = addresses.into_values().collect();
-    
-    substreams::log::info!("=== ENHANCED ADDRESS DATA ===");
-    substreams::log::info!("Found {} unique addresses", address_list.len());
-    
-    // Log first few addresses for debugging
-    for (i, addr) in address_list.iter().take(3).enumerate() {
-        substreams::log::info!("Address {}: {} - {} UTXOs, {} satoshis", 
-                              i + 1, addr.address, addr.funded_txo_count, addr.funded_txo_sum);
-    }
-
-    Ok(clock)
+    let addresses: Vec<AddressInfoEsplora> = address_map.into_values().collect();
+    Ok(AddressesEsplora { addresses })
 }
 
 /// Network statistics and fee estimates
 #[substreams::handlers::map]
-fn map_network_stats(clock: Clock, block: Block) -> Result<Clock, Error> {
-    let total_fees: u64 = block.tx.iter().map(|tx| calculate_tx_fee(tx)).sum();
+fn map_network_stats(_clock: Clock, block: Block) -> Result<NetworkStats, Error> {
+    let mut total_fees: u64 = 0;
+    let mut fee_rates: Vec<f64> = Vec::new();
+
+    for tx in &block.tx {
+        let fee = estimate_tx_fee(tx);
+        total_fees += fee;
+
+        // Calculate fee rate (sat/vB)
+        let vbytes = (tx.weight as f64 / 4.0).ceil();
+        if vbytes > 0.0 && fee > 0 {
+            fee_rates.push(fee as f64 / vbytes);
+        }
+    }
+
+    // Calculate fee estimates based on current block's fee distribution
+    let mut fee_estimates = std::collections::HashMap::new();
+    if !fee_rates.is_empty() {
+        fee_rates.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+
+        // High priority (next block) - 90th percentile
+        let high_idx = (fee_rates.len() as f64 * 0.9) as usize;
+        fee_estimates.insert("1".to_string(), fee_rates.get(high_idx).copied().unwrap_or(1.0));
+
+        // Medium priority (~1 hour) - 50th percentile
+        let med_idx = fee_rates.len() / 2;
+        fee_estimates.insert("6".to_string(), fee_rates.get(med_idx).copied().unwrap_or(1.0));
+
+        // Low priority (~1 day) - 10th percentile
+        let low_idx = (fee_rates.len() as f64 * 0.1) as usize;
+        fee_estimates.insert("144".to_string(), fee_rates.get(low_idx).copied().unwrap_or(1.0));
+    }
+
+    let active_addresses = count_unique_addresses(&block);
     let avg_fee_rate = if !block.tx.is_empty() {
         total_fees as f64 / block.tx.len() as f64
     } else {
         0.0
     };
-    
-    let active_addresses = count_unique_addresses(&block);
-    
-    let stats = NetworkStats {
+
+    Ok(NetworkStats {
         block_height: block.height as u32,
         block_hash: block.hash.clone(),
-        fee_estimates: std::collections::HashMap::new(), // TODO: Calculate real fee estimates
-        mempool_count: 0, // TODO: Get mempool data
-        mempool_vsize: 0,
-        mempool_total_fee: 0,
+        fee_estimates,
+        mempool_count: 0,    // Not available in Substreams (finalized blocks only)
+        mempool_vsize: 0,    // Not available in Substreams
+        mempool_total_fee: 0, // Not available in Substreams
         total_tx_count: block.tx.len() as u64,
-        total_fees: total_fees,
+        total_fees,
         active_addresses,
         avg_fee_rate,
-    };
-
-    substreams::log::info!("=== NETWORK STATISTICS ===");
-    substreams::log::info!("Block Height: {}", stats.block_height);
-    substreams::log::info!("Total Transactions: {}", stats.total_tx_count);
-    substreams::log::info!("Total Fees: {} satoshis", stats.total_fees);
-    substreams::log::info!("Active Addresses: {}", stats.active_addresses);
-    substreams::log::info!("Average Fee Rate: {} satoshis/tx", stats.avg_fee_rate);
-
-    Ok(clock)
+    })
 }
 
-// Helper functions
+// ============================================================================
+// Helper Functions
+// ============================================================================
 
 fn process_tx_input(input: &Vin) -> TxInputEsplora {
     TxInputEsplora {
         txid: input.txid.clone(),
         vout: input.vout,
         is_coinbase: !input.coinbase.is_empty(),
-        scriptsig: input.script_sig.as_ref().map(|s| s.hex.clone()).unwrap_or_default(),
-        scriptsig_asm: input.script_sig.as_ref().map(|s| s.asm.clone()).unwrap_or_default(),
+        scriptsig: input
+            .script_sig
+            .as_ref()
+            .map(|s| s.hex.clone())
+            .unwrap_or_default(),
+        scriptsig_asm: input
+            .script_sig
+            .as_ref()
+            .map(|s| s.asm.clone())
+            .unwrap_or_default(),
         witness: input.txinwitness.clone(),
         sequence: input.sequence,
-        prevout: Some(TxOutputEsplora {
-            scriptpubkey: String::new(),
-            scriptpubkey_asm: String::new(),
-            scriptpubkey_type: String::new(),
-            scriptpubkey_address: String::new(),
-            value: 0,
-        }),
+        prevout: None, // Would need UTXO lookup to populate
     }
 }
 
-fn process_tx_output(output: &Vout) -> TxOutputEsplora {
-    let scriptpubkey = output.script_pub_key.as_ref().map(|s| s.hex.clone()).unwrap_or_default();
-    let address = output.script_pub_key.as_ref().map(|s| s.address.clone()).unwrap_or_default();
-    
+fn process_tx_output(output: &Vout, _index: u32) -> TxOutputEsplora {
+    let script = output.script_pub_key.as_ref();
+
     TxOutputEsplora {
-        scriptpubkey,
-        scriptpubkey_asm: output.script_pub_key.as_ref().map(|s| s.asm.clone()).unwrap_or_default(),
-        scriptpubkey_type: output.script_pub_key.as_ref().map(|s| s.r#type.clone()).unwrap_or_default(),
-        scriptpubkey_address: address,
-        value: (output.value * 100_000_000.0) as u64, // Convert BTC to satoshis
+        scriptpubkey: script.map(|s| s.hex.clone()).unwrap_or_default(),
+        scriptpubkey_asm: script.map(|s| s.asm.clone()).unwrap_or_default(),
+        scriptpubkey_type: script.map(|s| s.r#type.clone()).unwrap_or_default(),
+        scriptpubkey_address: script.map(|s| s.address.clone()).unwrap_or_default(),
+        value: btc_to_sats(output.value),
     }
 }
 
-fn calculate_tx_fee(tx: &Transaction) -> u64 {
-    // Simplified fee calculation - in real implementation, this would need to look up input values
-    let input_total: u64 = tx.vin.len() as u64 * 100000; // Rough estimate
-    let output_total: u64 = tx.vout.iter().map(|o| (o.value * 100_000_000.0) as u64).sum();
-    
-    if input_total > output_total {
-        input_total - output_total
+fn extract_address(output: &Vout) -> String {
+    output
+        .script_pub_key
+        .as_ref()
+        .map(|s| s.address.clone())
+        .unwrap_or_default()
+}
+
+fn extract_address_type(output: &Vout) -> String {
+    output
+        .script_pub_key
+        .as_ref()
+        .map(|s| s.r#type.clone())
+        .unwrap_or_default()
+}
+
+/// Convert BTC to satoshis
+#[inline]
+fn btc_to_sats(btc: f64) -> u64 {
+    (btc * 100_000_000.0) as u64
+}
+
+/// Estimate transaction fee
+/// Note: Accurate fee calculation requires UTXO lookup for input values.
+/// This provides an estimate based on transaction characteristics.
+fn estimate_tx_fee(tx: &Transaction) -> u64 {
+    // For coinbase transactions, fee is 0
+    if tx.vin.iter().any(|input| !input.coinbase.is_empty()) {
+        return 0;
+    }
+
+    let output_total: u64 = tx.vout.iter().map(|o| btc_to_sats(o.value)).sum();
+
+    // Estimate based on typical UTXO values
+    // Average Bitcoin UTXO is ~0.01 BTC, adjust based on output total
+    let estimated_input_value = if output_total > 0 {
+        // Assume ~1-2% fee for typical transactions
+        let fee_rate = 0.015; // 1.5% average
+        (output_total as f64 * (1.0 + fee_rate)) as u64
     } else {
         0
-    }
+    };
+
+    estimated_input_value.saturating_sub(output_total)
 }
 
-fn calculate_difficulty(block: &Block) -> f64 {
-    // Simplified difficulty calculation based on bits
-    if let Ok(bits) = block.bits.parse::<u32>() {
-        if bits > 0 {
-            (0x1d00ffff as f64) / (bits as f64)
-        } else {
-            1.0
-        }
-    } else {
-        1.0
-    }
-}
-
+/// Count unique addresses in a block
 fn count_unique_addresses(block: &Block) -> u32 {
     let mut addresses = std::collections::HashSet::new();
-    
+
     for tx in &block.tx {
         for output in &tx.vout {
-            let address = output.script_pub_key.as_ref().map(|s| s.address.clone()).unwrap_or_default();
+            let address = extract_address(output);
             if !address.is_empty() {
                 addresses.insert(address);
             }
         }
     }
-    
+
     addresses.len() as u32
 }

@@ -1,11 +1,20 @@
 specVersion: v0.1.0
 package:
   name: bitcoin-esplora-enhanced
-  version: v0.1.4
+  version: v0.2.0
   url: https://github.com/PaulieB14/Bitcoin-Explorer-Substream
-  description: Enhanced Bitcoin blockchain data processor built on top of substreams-bitcoin-main, providing Esplora API compatible output with real transaction data, addresses, and network statistics.
+  description: |
+    Enhanced Bitcoin blockchain data processor providing Esplora API compatible output.
+    Features: block metadata, transaction details with witness data, address/UTXO tracking,
+    network statistics with fee estimates.
 
 network: bitcoin
+
+protobuf:
+  files:
+    - bitcoin_esplora.proto
+  importPaths:
+    - ./proto
 
 binaries:
   default:
@@ -20,7 +29,7 @@ modules:
       - source: sf.substreams.v1.Clock
       - source: sf.bitcoin.v1.Block
     output:
-      type: proto:sf.substreams.v1.Clock
+      type: proto:bitcoin_esplora.v1.BlockEsplora
 
   - name: map_transactions_esplora
     kind: map
@@ -29,7 +38,7 @@ modules:
       - source: sf.substreams.v1.Clock
       - source: sf.bitcoin.v1.Block
     output:
-      type: proto:sf.substreams.v1.Clock
+      type: proto:bitcoin_esplora.v1.TransactionsEsplora
 
   - name: map_addresses_esplora
     kind: map
@@ -38,7 +47,7 @@ modules:
       - source: sf.substreams.v1.Clock
       - source: sf.bitcoin.v1.Block
     output:
-      type: proto:sf.substreams.v1.Clock
+      type: proto:bitcoin_esplora.v1.AddressesEsplora
 
   - name: map_network_stats
     kind: map
@@ -47,4 +56,4 @@ modules:
       - source: sf.substreams.v1.Clock
       - source: sf.bitcoin.v1.Block
     output:
-      type: proto:sf.substreams.v1.Clock
+      type: proto:bitcoin_esplora.v1.NetworkStats

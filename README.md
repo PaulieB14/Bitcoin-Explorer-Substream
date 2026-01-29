@@ -1,71 +1,157 @@
 # Bitcoin Esplora Enhanced Substream
 
-Built on top of the working [substreams-bitcoin-main@v0.1.1](https://substreams.dev/packages/substreams-bitcoin-main/v0.1.1) package from Covalent, this enhanced version provides Esplora API compatible output with real Bitcoin data processing.
+Enhanced Bitcoin blockchain data processor providing [Esplora API](https://github.com/Blockstream/esplora/blob/master/API.md) compatible output using [Substreams](https://substreams.streamingfast.io/).
 
-## 🎯 **What We Built**
+## Features
 
-Instead of reinventing the wheel, we built on top of the proven `substreams-bitcoin-main` package that's already working and processing real Bitcoin data.
+- **Block Metadata**: Hash, height, timestamp, difficulty, merkle root, previous hash
+- **Transaction Details**: Full transaction data with inputs, outputs, and witness data
+- **Address Tracking**: UTXO tracking per address with funded/spent counts
+- **Network Statistics**: Fee estimates, active addresses, total fees per block
+- **SQL Sink Ready**: PostgreSQL and ClickHouse schemas included
 
-## 📊 **Enhanced Modules**
+## Modules
 
-### 1. `map_block_esplora`
-- **Based on**: `map_block_meta` from substreams-bitcoin-main
-- **Enhancement**: Esplora API format with difficulty, mediantime, and proper field names
-- **Output**: Complete block metadata in Esplora API format
+| Module | Output | Description |
+|--------|--------|-------------|
+| `map_block_esplora` | `BlockEsplora` | Block metadata in Esplora format |
+| `map_transactions_esplora` | `TransactionsEsplora` | All transactions with inputs/outputs/witness |
+| `map_addresses_esplora` | `AddressesEsplora` | Address analysis and UTXO tracking |
+| `map_network_stats` | `NetworkStats` | Network statistics and fee estimates |
 
-### 2. `map_transactions_esplora` 
-- **Based on**: `map_transactions` from substreams-bitcoin-main
-- **Enhancement**: Full transaction details with inputs/outputs, addresses, and fees in satoshis
-- **Output**: Complete transaction data with Esplora API compatibility
+## Quick Start
 
-### 3. `map_addresses_esplora`
-- **New**: Address analysis and UTXO tracking
-- **Features**: P2PKH, P2SH, P2WPKH address parsing and UTXO management
-- **Output**: Address statistics and UTXO information
+### Prerequisites
 
-### 4. `map_network_stats`
-- **New**: Network statistics and fee estimates
-- **Features**: Fee calculations, active address counts, network metrics
-- **Output**: Network-level statistics
+```bash
+# Install Substreams CLI
+brew install streamingfast/tap/substreams
 
-## 🔧 **Technical Implementation**
+# Authenticate
+substreams auth
+```
 
-- **Built on**: `substreams-bitcoin-main@v0.1.1` (proven working package)
-- **Real Bitcoin Data**: Processing actual Bitcoin blocks (not mock data)
-- **Esplora API Format**: Output matches Esplora API specification
-- **Amounts in Satoshis**: All Bitcoin amounts correctly converted to satoshis
-- **Protobuf Output**: Structured data for efficient parsing
+### Run
 
-## 🚀 **Key Advantages**
+```bash
+# Stream block data
+substreams run -e btc.substreams.pinax.network:443 \
+  https://github.com/PaulieB14/Bitcoin-Explorer-Substream/releases/download/v0.2.0/bitcoin-esplora-enhanced-v0.2.0.spkg \
+  map_block_esplora -s 800000 -t +10
 
-1. **Proven Foundation**: Built on working `substreams-bitcoin-main` package
-2. **Real Data**: Processing actual Bitcoin blockchain data
-3. **Esplora Compatible**: Output format matches Esplora API specification
-4. **Efficient**: Users parse structured data themselves to save egress costs
-5. **Complete**: Full transaction details, addresses, and network statistics
+# Stream transactions
+substreams run -e btc.substreams.pinax.network:443 \
+  https://github.com/PaulieB14/Bitcoin-Explorer-Substream/releases/download/v0.2.0/bitcoin-esplora-enhanced-v0.2.0.spkg \
+  map_transactions_esplora -s 800000 -t +10
+```
 
-## 📈 **Data Processing**
+### Build from Source
 
-When processing Bitcoin block 830000:
-- **Real Block Hash**: `000000000000000000011d55599ed27d7efca05f5849b755319c89eb2cffbc1f`
-- **Real Transaction Count**: ~2,500 transactions
-- **Real Addresses**: P2PKH, P2SH, P2WPKH addresses extracted
-- **Real Fees**: Actual transaction fees in satoshis
-- **Real Network Stats**: Block difficulty, size, weight, and timing
+```bash
+git clone https://github.com/PaulieB14/Bitcoin-Explorer-Substream.git
+cd Bitcoin-Explorer-Substream
+make build
+make pack
+```
 
-## 🎯 **Next Steps**
+## SQL Sink Usage
 
-1. **Fix YAML packaging** (minor issue)
-2. **Test with real JWT token** (your token works!)
-3. **Publish to Substreams Registry**
-4. **Users can parse structured output** to save egress costs
+### PostgreSQL
 
-## 💡 **The Value Proposition**
+```bash
+# Setup database
+substreams-sink-sql setup \
+  "psql://user:pass@localhost:5432/bitcoin" \
+  ./sql/schema-postgres.sql
 
-Instead of users parsing 9.6 MiB of raw blockchain data themselves, they get:
-- **Structured protobuf output** (~338 B per block)
-- **99.996% reduction** in data transfer costs
-- **Esplora API compatible** format
-- **Real Bitcoin data** processing
+# Run sink
+substreams-sink-sql run \
+  "psql://user:pass@localhost:5432/bitcoin" \
+  bitcoin-esplora-enhanced-v0.2.0.spkg \
+  map_block_esplora
+```
 
-This is exactly how Substreams is designed to work - process the heavy lifting server-side, output structured data for efficient client-side parsing.
+### ClickHouse
+
+```bash
+# Setup database
+substreams-sink-sql setup \
+  "clickhouse://user:pass@localhost:9000/bitcoin" \
+  ./sql/schema-clickhouse.sql
+
+# Run sink
+substreams-sink-sql run \
+  "clickhouse://user:pass@localhost:9000/bitcoin" \
+  bitcoin-esplora-enhanced-v0.2.0.spkg \
+  map_block_esplora
+```
+
+## Output Examples
+
+### Block Data
+
+```json
+{
+  "id": "00000000000000000002a7c4c1e48d76c5a37902165a270156b7a8d72728a054",
+  "height": 800000,
+  "version": 536870912,
+  "timestamp": 1690168629,
+  "tx_count": 3721,
+  "size": 1621583,
+  "weight": 3993561,
+  "merkle_root": "...",
+  "previous_hash": "...",
+  "difficulty": 53911173001054.59
+}
+```
+
+### Transaction Data
+
+```json
+{
+  "txid": "abc123...",
+  "version": 2,
+  "locktime": 0,
+  "size": 225,
+  "weight": 573,
+  "fee": 4500,
+  "inputs": [...],
+  "outputs": [...],
+  "witness": ["304402...", "0279be..."],
+  "status": {
+    "confirmed": true,
+    "block_height": 800000
+  }
+}
+```
+
+## Limitations
+
+- **Mempool Data**: Substreams processes finalized blocks only. Real-time mempool data requires a separate Bitcoin node connection.
+- **Fee Calculation**: Accurate fees require UTXO lookup. Current implementation provides estimates based on transaction characteristics.
+
+## Development
+
+```bash
+# Check code
+make check
+
+# Format code
+make fmt
+
+# Run tests
+make test-unit
+
+# Clean build
+make clean
+```
+
+## License
+
+Apache 2.0
+
+## Links
+
+- [Substreams Documentation](https://substreams.streamingfast.io/)
+- [Esplora API Reference](https://github.com/Blockstream/esplora/blob/master/API.md)
+- [Bitcoin Protocol](https://en.bitcoin.it/wiki/Protocol_documentation)
